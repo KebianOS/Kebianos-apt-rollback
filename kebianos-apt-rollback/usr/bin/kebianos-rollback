@@ -1,0 +1,50 @@
+#!/bin/bash
+# kebianos-rollback: gestionar snapshots de kebianos-apt-rollback
+set -eu
+SNAPDIR=@snapshots; KEEP=5; KEEP_FAILED=2
+[ -f /etc/kebianos/apt-rollback.conf ] && . /etc/kebianos/apt-rollback.conf
+
+usage() {
+cat <<USG
+Uso: sudo kebianos-rollback <comando>
+  list              Lista snapshots y sistemas fallidos (@failed-*)
+  restore <nombre>  Restaura un snapshot (ej: pre-update-20261117-174425)
+  clean             Borra @failed-* y poda snapshots segun apt-rollback.conf
+USG
+}
+
+[ "$(id -u)" = 0 ] || { echo "Ejecuta con sudo." >&2; exit 1; }
+[ "$(findmnt -no FSTYPE /)" = "btrfs" ] || { echo "/ no es Btrfs." >&2; exit 1; }
+
+ROOTDEV=$(findmnt -no SOURCE / | sed 's/\[.*//')
+ROOTSUB=$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p' | sed 's|^/||')
+[ -n "$ROOTSUB" ] || { echo "No se pudo detectar el subvolumen raiz." >&2; exit 1; }
+
+TOP=$(mktemp -d /run/kebian-top.XXXX)
+mount -o subvolid=5 "$ROOTDEV" "$TOP"
+trap 'cd /; sync; umount "$TOP" 2>/dev/null; rmdir "$TOP" 2>/dev/null' EXIT
+
+case "${1:-}" in
+list)
+    echo "== Snapshots ($SNAPDIR) =="
+    ls -1 "$TOP/$SNAPDIR" 2>/dev/null || echo "(ninguno)"
+    echo "== Sistemas fallidos =="
+    ls -1d "$TOP"/@failed-* 2>/dev/null | sed "s|$TOP/||" || true
+    ;;
+restore)
+    NAME=${2:-}
+    [ -n "$NAME" ] && [ -d "$TOP/$SNAPDIR/$NAME" ] || { echo "Snapshot no encontrado. Usa: kebianos-rollback list" >&2; exit 1; }
+    read -r -p "Restaurar '$NAME' y reiniciar despues? [s/N] " R
+    [ "$R" = "s" ] || [ "$R" = "S" ] || { echo "Cancelado."; exit 0; }
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    mv "$TOP/$ROOTSUB" "$TOP/@failed-manual-$STAMP"
+    btrfs subvolume snapshot "$TOP/$SNAPDIR/$NAME" "$TOP/$ROOTSUB" >/dev/null
+    mkdir -p /var/lib/kebianos && touch /var/lib/kebianos/reboot-required-rollback
+    echo "Listo. REINICIA para arrancar el sistema restaurado."
+    ;;
+clean)
+    ls -d "$TOP"/@failed-* 2>/dev/null | head -n -"$KEEP_FAILED" | xargs -r -n1 btrfs subvolume delete
+    ls -d "$TOP/$SNAPDIR"/pre-update-* 2>/dev/null | head -n -"$KEEP" | xargs -r -n1 btrfs subvolume delete
+    ;;
+*)  usage; exit 1 ;;
+esac

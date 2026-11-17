@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+# Limpiar la instalacion manual anterior (snapshot-hook), si existe
+case "$1" in
+install|upgrade)
+    rm -f /usr/lib/kebianos/snapshot-hook \
+          /etc/apt/apt.conf.d/80kebianos-snapshot \
+          /etc/kebianos/snapshot.conf
+    ;;
+esac
+#DEBHELPER#
+exit 0

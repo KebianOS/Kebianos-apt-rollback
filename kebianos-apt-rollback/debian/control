@@ -1,0 +1,19 @@
+Source: kebianos-apt-rollback
+Version: 1.0
+Section: admin
+Priority: optional
+Maintainer: Daniel <danny.mg302@gmail.com.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: kebianos-apt-rollback
+Architecture: all
+Depends: ${misc:Depends}, apt, dpkg, btrfs-progs, util-linux
+Suggests: grub-btrfs
+Description: Snapshot Btrfs automatico antes de apt y rollback si falla
+ Crea un snapshot de solo lectura del subvolumen raiz antes de cada
+ ejecucion de dpkg (via hooks de APT). Si la operacion deja paquetes
+ rotos, restaura automaticamente el sistema al estado anterior; solo
+ hay que reiniciar. Incluye el comando kebianos-rollback para listar,
+ restaurar y limpiar snapshots.

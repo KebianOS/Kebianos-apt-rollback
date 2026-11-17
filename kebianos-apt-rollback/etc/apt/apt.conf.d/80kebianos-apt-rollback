@@ -1,0 +1,2 @@
+DPkg::Pre-Invoke  { "/usr/lib/kebianos/apt-rollback-hook pre"; };
+DPkg::Post-Invoke { "/usr/lib/kebianos/apt-rollback-hook post"; };
