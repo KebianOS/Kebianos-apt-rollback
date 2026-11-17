@@ -1,0 +1,25 @@
+Format: 1.8
+Date: Tue, 17 Nov 2026 18:00:00 -0500
+Source: kebianos-apt-rollback
+Binary: kebianos-apt-rollback
+Architecture: all
+Version: 1.0.0
+Distribution: unstable
+Urgency: medium
+Maintainer: Daniel <danny.mg302@gmail.com.com>
+Changed-By: Daniel <danny.mg302@gmail.com>
+Description:
+ kebianos-apt-rollback - Snapshot Btrfs automatico antes de apt y rollback si falla
+Changes:
+ kebianos-apt-rollback (1.0.0) unstable; urgency=medium
+ .
+   * Version inicial: snapshot pre-dpkg y rollback automatico en Btrfs.
+Checksums-Sha1:
+ 122bb508065861a5be6a0faae697d207aa81e331 4228 kebianos-apt-rollback_1.0.0_all.deb
+ ff2012cab54e8d9128de1bdbb276c7049feb56ed 5088 kebianos-apt-rollback_1.0.0_amd64.buildinfo
+Checksums-Sha256:
+ 104f2f3b00ffaed834290428195d8d060773451532de4377e1875d5391c7941b 4228 kebianos-apt-rollback_1.0.0_all.deb
+ c617addfac66c49cbe7ab0286e2999fc90df356e288e284e54cbecfca1f83929 5088 kebianos-apt-rollback_1.0.0_amd64.buildinfo
+Files:
+ 0dff1cd4e80ff6b63e12235d898da677 4228 admin optional kebianos-apt-rollback_1.0.0_all.deb
+ 7c791e4cc7ab110ec8f6a7ab2c481acb 5088 admin optional kebianos-apt-rollback_1.0.0_amd64.buildinfo
