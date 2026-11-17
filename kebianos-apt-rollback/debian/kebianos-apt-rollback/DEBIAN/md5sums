@@ -1,0 +1,4 @@
+5d88a054ee5e004e167d268f71c8d35d  usr/bin/kebianos-rollback
+137d301698c0cfd89a600a7ae7d68e1a  usr/lib/kebianos/apt-rollback-hook
+9ed4b2566bf357dd50a35f97c93732a8  usr/share/doc/kebianos-apt-rollback/changelog.gz
+192512a39a9ed80d4540436cae69e5aa  usr/share/doc/kebianos-apt-rollback/copyright

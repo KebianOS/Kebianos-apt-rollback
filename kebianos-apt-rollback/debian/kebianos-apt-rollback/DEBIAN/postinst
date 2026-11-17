@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+if [ "$1" = "configure" ]; then
+    # Instalacion nueva: borrar marcador huerfano de la version manual
+    if [ -z "${2:-}" ]; then
+        rm -f /var/lib/kebianos/pending-snapshot
+    fi
+    if [ "$(findmnt -no FSTYPE / 2>/dev/null)" != "btrfs" ]; then
+        echo "kebianos-apt-rollback: AVISO: / no es Btrfs, no hara nada." >&2
+    fi
+    if mountpoint -q /boot 2>/dev/null; then
+        echo "kebianos-apt-rollback: AVISO: /boot es una particion aparte; el rollback no revertira el kernel." >&2
+    fi
+fi
+
+exit 0

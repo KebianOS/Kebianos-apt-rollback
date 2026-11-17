@@ -1,0 +1,2 @@
+/etc/apt/apt.conf.d/80kebianos-apt-rollback
+/etc/kebianos/apt-rollback.conf

@@ -1,0 +1,87 @@
+#!/bin/bash
+# kebianos-apt-rollback: snapshot Btrfs antes de dpkg y rollback si falla.
+# Se invoca desde /etc/apt/apt.conf.d/80kebianos-apt-rollback
+set -u
+AUTO_ROLLBACK=yes
+KEEP=5
+KEEP_FAILED=2
+SNAPDIR=@snapshots
+[ -f /etc/kebianos/apt-rollback.conf ] && . /etc/kebianos/apt-rollback.conf
+
+STATE=/var/lib/kebianos
+MARKER=$STATE/pending-snapshot
+LOCK=$STATE/reboot-required-rollback
+mkdir -p "$STATE"
+
+# Solo funciona si / es Btrfs
+[ "$(findmnt -no FSTYPE /)" = "btrfs" ] || exit 0
+
+ROOTDEV=$(findmnt -no SOURCE / | sed 's/\[.*//')
+ROOTSUB=$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p' | sed 's|^/||')
+[ -n "$ROOTSUB" ] || exit 0
+
+TOP=""
+mount_top() {
+    TOP=$(mktemp -d /run/kebian-top.XXXX) || return 1
+    mount -o subvolid=5 "$ROOTDEV" "$TOP" || { rmdir "$TOP"; TOP=""; return 1; }
+}
+umount_top() {
+    [ -n "$TOP" ] || return 0
+    sync
+    umount "$TOP" && rmdir "$TOP"
+    TOP=""
+}
+prune() {
+    ls -d "$TOP/$SNAPDIR"/pre-update-* 2>/dev/null | head -n -"$KEEP" \
+        | xargs -r -n1 btrfs subvolume delete >/dev/null 2>&1
+    ls -d "$TOP"/@failed-* 2>/dev/null | head -n -"$KEEP_FAILED" \
+        | xargs -r -n1 btrfs subvolume delete >/dev/null 2>&1
+}
+
+case "${1:-}" in
+pre)
+    if [ -f "$LOCK" ]; then
+        echo "KebianOS: hay un rollback pendiente. Reinicia antes de usar apt." >&2
+        exit 1
+    fi
+    # apt puede llamar a dpkg varias veces: un snapshot por transaccion
+    [ -f "$MARKER" ] && exit 0
+    STAMP=$(date +%Y%m%d-%H%M%S)
+    mount_top || exit 0          # si falla, NO bloqueamos la actualizacion
+    mkdir -p "$TOP/$SNAPDIR"
+    if btrfs subvolume snapshot -r "$TOP/$ROOTSUB" "$TOP/$SNAPDIR/pre-update-$STAMP" >/dev/null; then
+        echo "$STAMP" > "$MARKER"
+        echo "KebianOS: snapshot pre-update-$STAMP creado"
+    fi
+    umount_top
+    ;;
+post)
+    [ -f "$MARKER" ] || exit 0
+    STAMP=$(cat "$MARKER"); rm -f "$MARKER"
+
+    if [ -z "$(dpkg --audit 2>&1)" ]; then
+        mount_top || exit 0
+        prune
+        umount_top
+        exit 0
+    fi
+
+    echo "KebianOS: la actualizacion dejo paquetes rotos."
+    if [ "$AUTO_ROLLBACK" = "yes" ]; then
+        mount_top || exit 0
+        if [ -d "$TOP/$SNAPDIR/pre-update-$STAMP" ] \
+           && mv "$TOP/$ROOTSUB" "$TOP/@failed-$STAMP" \
+           && btrfs subvolume snapshot "$TOP/$SNAPDIR/pre-update-$STAMP" "$TOP/$ROOTSUB" >/dev/null; then
+            touch "$LOCK"
+            echo "KebianOS: sistema restaurado. REINICIA AHORA y no uses apt hasta entonces."
+        else
+            echo "KebianOS: ERROR en el rollback. Snapshot: $SNAPDIR/pre-update-$STAMP" >&2
+            [ -d "$TOP/@failed-$STAMP" ] && [ ! -d "$TOP/$ROOTSUB" ] && mv "$TOP/@failed-$STAMP" "$TOP/$ROOTSUB"
+        fi
+        umount_top
+    else
+        echo "Snapshot disponible: pre-update-$STAMP (rollback automatico desactivado)"
+    fi
+    ;;
+esac
+exit 0

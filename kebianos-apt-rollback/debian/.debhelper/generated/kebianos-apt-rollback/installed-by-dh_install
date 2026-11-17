@@ -1,0 +1,4 @@
+./usr/lib/kebianos/apt-rollback-hook
+./usr/bin/kebianos-rollback
+./etc/apt/apt.conf.d/80kebianos-apt-rollback
+./etc/kebianos/apt-rollback.conf
